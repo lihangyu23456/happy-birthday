@@ -261,6 +261,16 @@
         let autoEntryTimer = null;
         let autoEntrySeconds = 10;
         let audioContext, analyser;
+        let photoWallActive = false;
+        let photoWallGroup = null;
+        let photoWallPhotos = [];
+        let photoWallGrid = [];
+        let photoWallZoom = 30;
+        let photoWallPanX = 0;
+        let photoWallLoadedCount = 0;
+        let photoWallTotal = 0;
+        let photoWallManifest = [];
+        let photoWallAnimTime = 0;
         const bgm = document.getElementById('bgm');
 
         // --- 礼物数据 ---
@@ -1136,16 +1146,6 @@
         }
 
         // ==================== 照片墙系统 ====================
-        let photoWallActive = false;
-        let photoWallGroup = null;
-        let photoWallPhotos = [];
-        let photoWallGrid = [];
-        let photoWallZoom = 30;
-        let photoWallPanX = 0;
-        let photoWallLoadedCount = 0;
-        let photoWallTotal = 0;
-        let photoWallManifest = [];
-        let photoWallAnimTime = 0;
 
         function startPhotoWall() {
             log('启动照片墙...');
