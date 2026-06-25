@@ -96,6 +96,9 @@
         #photowall-exit-btn { position: absolute; top: 20px; right: 20px; z-index: 150; padding: 10px 24px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); color: white; font-size: 1rem; cursor: pointer; pointer-events: auto; transition: all 0.3s; }
         #photowall-exit-btn.hidden { display: none !important; }
         #photowall-exit-btn:hover { background: rgba(255,255,255,0.2); }
+        #photowall-transform-btn { position: absolute; top: 70px; right: 20px; z-index: 150; padding: 10px 24px; border-radius: 30px; border: 1px solid rgba(255,105,180,0.4); background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); color: #FFD700; font-size: 1rem; cursor: pointer; pointer-events: auto; transition: all 0.3s; }
+        #photowall-transform-btn.hidden { display: none !important; }
+        #photowall-transform-btn:hover { background: rgba(255,105,180,0.25); }
         #photo-viewer.hidden { display: none !important; }
 
         @media (min-width: 600px) and (max-width: 1024px) {
@@ -144,6 +147,7 @@
     <div id="canvas-container"></div>
     <button id="floating-gift-btn" class="hidden safe-click-area" title="查看祝福">🎁</button>
     <button id="photowall-exit-btn" class="hidden safe-click-area">✕ 返回</button>
+    <button id="photowall-transform-btn" class="hidden safe-click-area">💕 转换</button>
     <!-- 照片查看弹窗 -->
     <div id="photo-viewer" class="hidden" style="position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.85);display:flex;justify-content:center;align-items:center;pointer-events:auto;">
         <div id="photo-viewer-inner" style="position:relative;width:min(450px,85vw);max-height:82vh;transform:scale(0);opacity:0;transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1),opacity 0.3s ease;">
@@ -1147,6 +1151,7 @@
 
         // ==================== 照片墙系统 v3 ====================
         let photoWallExiting = false;
+        let photoWallIsHeart = false;
         let photoWallRaycaster, photoWallMouse = new THREE.Vector2();
 
         function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
@@ -1155,6 +1160,7 @@
             log('启动照片墙...');
             photoWallActive = true;
             photoWallExiting = false;
+            photoWallIsHeart = false;
             ui.wishArea.classList.add('hidden');
             ui.wishArea.classList.remove('active');
             ui.giftRevealArea.classList.add('hidden');
@@ -1184,6 +1190,7 @@
             photoWallRaycaster.params.Points.threshold = 0.5;
             scatterThenTransition(null, 500, () => {
                 document.getElementById('photowall-exit-btn').classList.remove('hidden');
+                document.getElementById('photowall-transform-btn').classList.remove('hidden');
                 loadPhotoWall();
             });
         }
@@ -1208,6 +1215,7 @@
         function cleanupPhotoWall() {
             photoWallActive = false; photoWallExiting = false;
             document.getElementById('photowall-exit-btn').classList.add('hidden');
+            document.getElementById('photowall-transform-btn').classList.add('hidden');
             if (controls) controls.enabled = false;
             if (photoWallGroup) {
                 while (photoWallGroup.children.length) {
@@ -1313,6 +1321,50 @@
                 photoWallGrid.push({ x: b.x + (Math.random() - 0.5) * 1.2, y: b.y + (Math.random() - 0.5) * 0.8, z: 0.2 + Math.random() * 1.2, gridR: 99, gridC: 99 });
             }
             log(`轮廓: ${bestInMask}前景像素, ${photoWallGrid.length}格点`);
+        }
+
+        function generateHeartGrid() {
+            const n = photoWallManifest.length;
+            const grid = [];
+            // 爱心参数方程: x = 16sin³t, y = 13cost - 5cos2t - 2cos3t - cos4t
+            const scaleH = 0.9;
+            for (let i = 0; i < n; i++) {
+                const t = (i / n) * Math.PI * 2;
+                const hx = 16 * Math.pow(Math.sin(t), 3);
+                const hy = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+                // 向内部随机偏移
+                const offR = Math.random() * 0.7;
+                const offA = Math.random() * Math.PI * 2;
+                const x = (hx + Math.cos(offA) * offR) * scaleH;
+                const y = (hy + Math.sin(offA) * offR) * scaleH;
+                grid.push({ x, y: -y, z: (Math.random() - 0.5) * 0.8, gridR: 0, gridC: 0 });
+            }
+            return grid;
+        }
+
+        function togglePhotoWallShape() {
+            if (!photoWallActive || !photoWallGroup) return;
+            photoWallIsHeart = !photoWallIsHeart;
+            const btn = document.getElementById('photowall-transform-btn');
+            btn.innerText = photoWallIsHeart ? '🖼 还原' : '💕 转换';
+            const newGrid = photoWallIsHeart ? generateHeartGrid() : photoWallGrid;
+            // 打散所有照片（保留 extra 不动）
+            photoWallPhotos.forEach((m, i) => {
+                if (m.userData.isExtra) return;
+                const target = newGrid[i % newGrid.length] || { x: 0, y: 0, z: 0 };
+                const scatterZ = 25 + Math.random() * 20;
+                m.position.set(
+                    m.position.x + (Math.random() - 0.5) * 25,
+                    m.position.y + (Math.random() - 0.5) * 20,
+                    scatterZ
+                );
+                m.userData.tx = target.x;
+                m.userData.ty = target.y;
+                m.userData.tz = target.z;
+                m.userData.animDelay = (i / photoWallPhotos.length) * 2.5;
+                m.userData.spinAngle = (Math.random() - 0.5) * Math.PI * 1.5;
+                m.scale.set(3.5, 3.5, 1);
+            });
         }
 
         function loadPhotoWall() {
@@ -1459,6 +1511,7 @@
             if (e.target.id === 'photo-viewer') closePhotoViewer();
         });
         document.getElementById('photowall-exit-btn').addEventListener('click', stopPhotoWall);
+        document.getElementById('photowall-transform-btn').addEventListener('click', togglePhotoWallShape);
 
         // -- 照片墙手势 (MediaPipe → OrbitControls) --
         // 在 initCamera 的 onResults 中替换旧手势代码
