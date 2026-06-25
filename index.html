@@ -1339,18 +1339,30 @@
                 const gIdx = i % photoWallGrid.length;
                 const gp = photoWallGrid[gIdx] || { x: 0, y: 0, z: 0, gridR: 0, gridC: 0 };
                 const aspect = tex.image ? tex.image.width / tex.image.height : 0.75;
-                const tw = 0.45 + Math.random() * 0.2;
+                const tw = 0.85 + Math.random() * 0.4;
                 const geo = new THREE.PlaneGeometry(tw, tw / Math.max(aspect, 0.35));
                 const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, transparent: true, opacity: 0, depthWrite: false });
                 const mesh = new THREE.Mesh(geo, mat);
-                mesh.position.set(gp.x + (Math.random() - 0.5) * 18, gp.y + (Math.random() - 0.5) * 12, 35 + Math.random() * 20);
-                mesh.scale.set(3.5, 3.5, 1);
+                // 轮廓内的照片从近处飞入；多余的放到后方做星河
+                const isExtra = gIdx >= photoWallGrid.length || gp.gridR === 99;
+                if (isExtra) {
+                    gp.z = -3 - Math.random() * 6;
+                    gp.x = gp.x + (Math.random() - 0.5) * 8;
+                    gp.y = gp.y + (Math.random() - 0.5) * 6;
+                }
+                mesh.position.set(
+                    isExtra ? gp.x : gp.x + (Math.random() - 0.5) * 18,
+                    isExtra ? gp.y : gp.y + (Math.random() - 0.5) * 12,
+                    isExtra ? gp.z : 35 + Math.random() * 20
+                );
+                mesh.scale.set(isExtra ? 1.5 : 3.5, isExtra ? 1.5 : 3.5, 1);
                 const dC = Math.sqrt(Math.pow((gp.gridR || 15) / 30 - 0.5, 2) + Math.pow((gp.gridC || 15) / 30 - 0.5, 2));
                 mesh.userData = {
                     tx: gp.x, ty: gp.y, tz: gp.z,
-                    animDelay: dC * 2.2 + Math.random() * 0.5,
+                    animDelay: isExtra ? Math.random() * 3 : dC * 2.2 + Math.random() * 0.5,
                     spinAngle: (Math.random() - 0.5) * Math.PI * 1.2,
-                    fileName: fname
+                    fileName: fname,
+                    isExtra: isExtra
                 };
                 photoWallGroup.add(mesh);
                 photoWallPhotos.push(mesh);
@@ -1378,9 +1390,21 @@
             });
         }
 
-        // 照片点击查看
-        renderer.domElement.addEventListener('click', (e) => {
+        // 照片点击查看 — 区分拖拽和点击
+        let pwDownPos = { x: 0, y: 0 };
+        let pwDownTime = 0;
+        renderer.domElement.addEventListener('pointerdown', (e) => {
+            if (!photoWallActive) return;
+            pwDownPos = { x: e.clientX, y: e.clientY };
+            pwDownTime = Date.now();
+        });
+        renderer.domElement.addEventListener('pointerup', (e) => {
             if (!photoWallActive || !photoWallGroup) return;
+            const dx = e.clientX - pwDownPos.x;
+            const dy = e.clientY - pwDownPos.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const dt = Date.now() - pwDownTime;
+            if (dist > 4 || dt > 400) return; // 是拖拽不是点击
             const rect = renderer.domElement.getBoundingClientRect();
             photoWallMouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             photoWallMouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1454,7 +1478,16 @@
             requestAnimationFrame(render);
             updateParticles();
             if (photoWallActive) {
-                particlesData.forEach(p => { if (p.type === 'photo') { p.type = 'bg'; p.targetColor.set(0x222222); } });
+                // 隐藏所有粒子
+                const posArr = particleSystem.geometry.attributes.position.array;
+                const szArr = particleSystem.geometry.attributes.size.array;
+                const colArr = particleSystem.geometry.attributes.color.array;
+                for (let i = 0; i < VISUAL_CONFIG.particleCount; i++) {
+                    szArr[i] = 0;
+                    colArr[i * 3] = colArr[i * 3 + 1] = colArr[i * 3 + 2] = 0;
+                }
+                particleSystem.geometry.attributes.size.needsUpdate = true;
+                particleSystem.geometry.attributes.color.needsUpdate = true;
             }
             if (controls && photoWallActive) { controls.update(); }
             renderer.render(scene, camera);
