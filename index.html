@@ -233,7 +233,8 @@
         if (window.location.protocol === 'file:') document.getElementById('protocol-warning').style.display = 'block';
 
         const CAKE_THEME = { bottom: "#FF69B4", top: "#FFB6C1", cream: "#FFFFFF" };
-        const VISUAL_CONFIG = { particleCount: IS_MOBILE ? 3500 : IS_TABLET ? 5500 : 7500, color: 0xff69b4, blowThreshold: 25 };
+        const PHOTO_PARTICLES = IS_MOBILE ? 800 : IS_TABLET ? 1400 : 2000;
+        const VISUAL_CONFIG = { particleCount: IS_MOBILE ? 3500 : IS_TABLET ? 5500 : 7500, color: 0xff69b4, blowThreshold: 25, photoParticleCount: PHOTO_PARTICLES };
         const STATE = { INTRO: -1, IDLE: 0, COUNTDOWN: 1, BLOWING: 3, WISH_CLASP: 5, WISH_BLOW: 6, CELEBRATION: 4 };
 
         let currentState = STATE.INTRO;
@@ -242,6 +243,7 @@
         let scene, camera, renderer, particleSystem;
         let time = 0;
         let shapeCache = {};
+        let photoOutline = null;       // 照片轮廓点
         let blowProgress = 0;
         let isSpacePressed = false;
         let isTouching = false;
@@ -355,12 +357,22 @@
             const sizes = new Float32Array(VISUAL_CONFIG.particleCount);
             particlesData = [];
             const c = new THREE.Color(VISUAL_CONFIG.color);
+            const photoColor = new THREE.Color('#C9A96E');
             for (let i = 0; i < VISUAL_CONFIG.particleCount; i++) {
+                const isPhoto = i < VISUAL_CONFIG.photoParticleCount;
                 const x = (Math.random() - 0.5) * 300, y = (Math.random() - 0.5) * 300, z = (Math.random() - 0.5) * 200;
                 positions[i * 3] = x; positions[i * 3 + 1] = y; positions[i * 3 + 2] = z;
-                colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
-                sizes[i] = Math.random() * 2;
-                particlesData.push({ current: new THREE.Vector3(x, y, z), target: new THREE.Vector3(x, y, z), baseTarget: new THREE.Vector3(x, y, z), velocity: new THREE.Vector3(0, 0, 0), type: 'bg', layer: null, targetColor: c.clone(), noiseOffset: Math.random() * 100, angle: Math.random() * Math.PI * 2, radius: 20 + Math.random() * 40, orbitSpeed: (Math.random() - 0.5) * 0.02 });
+                colors[i * 3] = isPhoto ? photoColor.r : c.r;
+                colors[i * 3 + 1] = isPhoto ? photoColor.g : c.g;
+                colors[i * 3 + 2] = isPhoto ? photoColor.b : c.b;
+                sizes[i] = isPhoto ? 0.8 + Math.random() * 1.2 : Math.random() * 2;
+                particlesData.push({
+                    current: new THREE.Vector3(x, y, z), target: new THREE.Vector3(x, y, z), baseTarget: new THREE.Vector3(x, y, z),
+                    velocity: new THREE.Vector3(0, 0, 0), type: isPhoto ? 'photo' : 'bg', layer: null,
+                    targetColor: isPhoto ? photoColor.clone() : c.clone(),
+                    noiseOffset: Math.random() * 100, angle: Math.random() * Math.PI * 2, radius: 20 + Math.random() * 40,
+                    orbitSpeed: (Math.random() - 0.5) * 0.02
+                });
             }
             geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
             geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
@@ -507,6 +519,52 @@
             return points;
         }
 
+        function extractPhotoOutline(img, callback) {
+            const maxPoints = VISUAL_CONFIG.photoParticleCount;
+            const canvas = document.createElement('canvas');
+            const scale = Math.min(300 / img.width, 300 / img.height);
+            canvas.width = Math.floor(img.width * scale);
+            canvas.height = Math.floor(img.height * scale);
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const { data, width, height } = imageData;
+            const gray = new Float32Array(width * height);
+            for (let i = 0; i < width * height; i++) {
+                gray[i] = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
+            }
+            const edges = new Float32Array(width * height);
+            let maxEdge = 0;
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const idx = y * width + x;
+                    const gx = -gray[idx - width - 1] - 2 * gray[idx - 1] - gray[idx + width - 1]
+                             + gray[idx - width + 1] + 2 * gray[idx + 1] + gray[idx + width + 1];
+                    const gy = -gray[idx - width - 1] - 2 * gray[idx - width] - gray[idx - width + 1]
+                             + gray[idx + width - 1] + 2 * gray[idx + width] + gray[idx + width + 1];
+                    edges[idx] = Math.sqrt(gx * gx + gy * gy);
+                    if (edges[idx] > maxEdge) maxEdge = edges[idx];
+                }
+            }
+            const threshold = maxEdge * 0.12;
+            const allPoints = [];
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = y * width + x;
+                    if (edges[idx] > threshold) allPoints.push({ x, y, s: edges[idx] });
+                }
+            }
+            allPoints.sort((a, b) => b.s - a.s);
+            const selected = allPoints.slice(0, maxPoints);
+            const scale3D = 0.13;
+            photoOutline = selected.map(p => ({
+                vec: new THREE.Vector3((p.x - width / 2) * scale3D, -(p.y - height / 2) * scale3D, (Math.random() - 0.5) * 4),
+                type: 'photo', color: new THREE.Color().setHSL(0.12 + Math.random() * 0.06, 0.5, 0.45 + Math.random() * 0.2)
+            }));
+            log(`照片轮廓提取完成: ${photoOutline.length} 点`);
+            callback();
+        }
+
         function preloadShapes() {
             setTimeout(() => {
                 shapeCache['3'] = getShapePoints('text', '3');
@@ -515,13 +573,44 @@
                 shapeCache['cake'] = getShapePoints('cake');
                 shapeCache['giftbox'] = getShapePoints('giftbox');
                 shapeCache['frame'] = getShapePoints('frame');
-                ui.loadingText.style.display = 'none';
+                // 加载照片并提取轮廓
+                const photoImg = new Image();
+                photoImg.crossOrigin = 'anonymous';
+                photoImg.onload = () => {
+                    extractPhotoOutline(photoImg, () => {
+                        applyPhotoOutline();
+                        ui.loadingText.style.display = 'none';
+                    });
+                };
+                photoImg.onerror = () => {
+                    log('照片加载失败，跳过轮廓');
+                    ui.loadingText.style.display = 'none';
+                };
+                photoImg.src = './src/photo.jpg';
             }, 100);
+        }
+
+        function applyPhotoOutline() {
+            if (!photoOutline || photoOutline.length === 0) return;
+            // 将前 N 个粒子绑定到照片轮廓
+            for (let i = 0; i < VISUAL_CONFIG.photoParticleCount; i++) {
+                const p = particlesData[i];
+                if (!p || p.type !== 'photo') continue;
+                const pt = photoOutline[i % photoOutline.length];
+                p.baseTarget.copy(pt.vec);
+                p.target.copy(pt.vec);
+                p.type = 'photo';
+                p.targetColor = (pt.color || new THREE.Color('#C9A96E')).clone();
+                // 随机散布到周围然后慢慢聚集
+                const spread = 30;
+                p.current.set(pt.vec.x + (Math.random() - 0.5) * spread, pt.vec.y + (Math.random() - 0.5) * spread, pt.vec.z + (Math.random() - 0.5) * spread);
+            }
         }
 
         function transitionTo(key) {
             const targets = shapeCache[key] || [];
             particlesData.forEach((p, i) => {
+                if (p.type === 'photo') return; // 跳过照片粒子
                 if (i < targets.length) {
                     p.baseTarget.copy(targets[i].vec); p.target.copy(targets[i].vec);
                     p.type = targets[i].type; p.layer = targets[i].layer;
@@ -539,8 +628,8 @@
         function scatterThenTransition(targetKey, delay, callback) {
             if (scatterDelayActive) return;
             scatterDelayActive = true;
-            // 打散所有粒子
             particlesData.forEach(p => {
+                if (p.type === 'photo') return; // 照片粒子不动
                 const angle = Math.random() * Math.PI * 2;
                 const r = 50 + Math.random() * 80;
                 p.target.set(r * Math.cos(angle), (Math.random() - 0.5) * 100, r * Math.sin(angle));
@@ -562,6 +651,14 @@
             for (let i = 0; i < VISUAL_CONFIG.particleCount; i++) {
                 const p = particlesData[i];
                 let target = p.target.clone();
+                // 照片粒子：温和漂浮，不被状态变换影响
+                if (p.type === 'photo') {
+                    target.y += Math.sin(time * 0.6 + p.noiseOffset) * 0.8;
+                    target.x += Math.cos(time * 0.5 + p.noiseOffset * 0.7) * 0.5;
+                    target.z += Math.sin(time * 0.4 + p.noiseOffset * 1.1) * 0.5;
+                    const alpha = 0.02;
+                    p.targetColor.r += (p.targetColor.r - p.targetColor.r) * 1e-9; // no-op placeholder
+                }
                 if (p.type === 'cake') {
                     if (p.layer === 'bottom') p.targetColor.set(CAKE_THEME.bottom);
                     else if (p.layer === 'top') p.targetColor.set(CAKE_THEME.top);
