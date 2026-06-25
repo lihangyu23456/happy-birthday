@@ -272,6 +272,7 @@
         let photoWallTotal = 0;
         let photoWallManifest = [];
         let photoWallAnimTime = 0;
+        let controls = null;
         const bgm = document.getElementById('bgm');
 
         // --- 礼物数据 ---
@@ -1147,7 +1148,6 @@
         }
 
         // ==================== 照片墙系统 v2 ====================
-        let controls = null;
         let photoWallExiting = false;
 
         function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
