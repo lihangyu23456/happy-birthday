@@ -440,7 +440,7 @@
             } else if (type === 'giftbox') {
                 const W = 26, H = 18, D = 26;
                 const goldColor = '#FFD700', redColor = '#DD2244', pinkColor = '#FF69B4';
-                const sf = IS_MOBILE ? 400 : IS_TABLET ? 600 : 900;
+                const sf = IS_MOBILE ? 500 : IS_TABLET ? 800 : 1200;
                 // 盒体 5 面（4壁 + 1底）
                 for (let i = 0; i < sf; i++) {
                     const x = (Math.random() - 0.5) * W, y = (Math.random() - 0.5) * H;
@@ -458,7 +458,7 @@
                 }
                 // 金色竖条纹（礼品带）
                 for (let fi = 0; fi < 4; fi++) {
-                    for (let i = 0; i < 120; i++) {
+                    for (let i = 0; i < 180; i++) {
                         let x, y, z;
                         const ry = (Math.random() - 0.5) * H;
                         if (fi === 0) { x = (Math.random() - 0.5) * 1.5; y = ry; z = D/2 + 0.05; }
