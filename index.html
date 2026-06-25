@@ -145,9 +145,11 @@
     <button id="floating-gift-btn" class="hidden safe-click-area" title="查看祝福">🎁</button>
     <button id="photowall-exit-btn" class="hidden safe-click-area">✕ 返回</button>
     <!-- 照片查看弹窗 -->
-    <div id="photo-viewer" class="hidden" style="position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.9);display:flex;justify-content:center;align-items:center;pointer-events:auto;">
-        <img id="photo-viewer-img" style="max-width:95vw;max-height:95vh;object-fit:contain;border-radius:12px;box-shadow:0 0 60px rgba(255,105,180,0.3);">
-        <button id="photo-viewer-close" style="position:absolute;top:20px;right:20px;font-size:2rem;color:white;background:none;border:none;cursor:pointer;">✕</button>
+    <div id="photo-viewer" class="hidden" style="position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.85);display:flex;justify-content:center;align-items:center;pointer-events:auto;">
+        <div id="photo-viewer-inner" style="position:relative;max-width:82vw;max-height:82vh;transform:scale(0);opacity:0;transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1),opacity 0.25s ease;">
+            <img id="photo-viewer-img" style="max-width:100%;max-height:75vh;object-fit:contain;border-radius:16px;box-shadow:0 0 80px rgba(255,105,180,0.35);">
+            <button id="photo-viewer-close" style="position:absolute;top:-16px;right:-16px;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.7);color:white;border:1px solid rgba(255,255,255,0.3);font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+        </div>
     </div>
 
     <div id="start-overlay">
@@ -1388,17 +1390,30 @@
                 const fname = hits[0].object.userData.fileName;
                 if (fname) {
                     const viewer = document.getElementById('photo-viewer');
+                    const inner = document.getElementById('photo-viewer-inner');
                     const img = document.getElementById('photo-viewer-img');
                     img.src = './src/photos/thumb/' + fname;
                     viewer.classList.remove('hidden');
+                    inner.style.transform = 'scale(0)';
+                    inner.style.opacity = '0';
+                    requestAnimationFrame(() => {
+                        inner.style.transform = 'scale(1)';
+                        inner.style.opacity = '1';
+                    });
                 }
             }
         });
-        document.getElementById('photo-viewer-close').addEventListener('click', () => {
-            document.getElementById('photo-viewer').classList.add('hidden');
-        });
+        function closePhotoViewer() {
+            const inner = document.getElementById('photo-viewer-inner');
+            inner.style.transform = 'scale(0)';
+            inner.style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('photo-viewer').classList.add('hidden');
+            }, 300);
+        }
+        document.getElementById('photo-viewer-close').addEventListener('click', closePhotoViewer);
         document.getElementById('photo-viewer').addEventListener('click', (e) => {
-            if (e.target.id === 'photo-viewer') e.target.classList.add('hidden');
+            if (e.target.id === 'photo-viewer') closePhotoViewer();
         });
         document.getElementById('photowall-exit-btn').addEventListener('click', stopPhotoWall);
 
