@@ -256,6 +256,7 @@
                 <span id="status-text" class="text-xs md:text-sm text-gray-300 tracking-wider">SYSTEM READY</span>
             </div>
             <div class="flex gap-2">
+                <button id="fullscreen-btn" class="interactive-element p-3 glass-panel hover:bg-white/20 transition rounded-full active:scale-90 text-sm" title="全屏">⛶</button>
                 <button id="settings-toggle" class="interactive-element p-3 glass-panel hover:bg-white/20 transition rounded-full active:scale-90 text-sm">🎨</button>
                 <button id="music-btn" class="interactive-element p-3 glass-panel hover:bg-white/20 transition rounded-full active:scale-90">🎵</button>
             </div>
@@ -1058,6 +1059,38 @@
         document.getElementById('music-btn').addEventListener('click', () => {
             if (bgm.paused) bgm.play(); else bgm.pause();
         });
+
+        document.getElementById('fullscreen-btn').addEventListener('click', toggleFullscreen);
+        document.addEventListener('fullscreenchange', updateFullscreenIcon);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                const el = document.documentElement;
+                if (el.requestFullscreen) {
+                    el.requestFullscreen().catch(() => {});
+                } else if (el.webkitRequestFullscreen) {
+                    el.webkitRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+        }
+
+        function updateFullscreenIcon() {
+            const btn = document.getElementById('fullscreen-btn');
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                btn.innerHTML = '✕';
+                btn.title = '退出全屏';
+            } else {
+                btn.innerHTML = '⛶';
+                btn.title = '全屏';
+            }
+        }
 
         async function initCamera() {
             const video = document.getElementsByClassName('input_video')[0];
