@@ -937,6 +937,25 @@
             startWishClasp();
         });
 
+        // --- 双击跳过合十环节 ---
+        let lastTapTime = 0;
+        document.addEventListener('pointerdown', (e) => {
+            if (currentState !== STATE.WISH_CLASP) return;
+            if (e.target.closest('button')) return;
+            const now = Date.now();
+            if (now - lastTapTime < 320) {
+                // 双击：跳过合十和吹气，直接到礼物
+                log('双击跳过，直接展示礼物');
+                currentState = STATE.WISH_CLASP; // 保持状态不冲突
+                claspTimer = 0;
+                ui.claspHint.style.display = 'none';
+                ui.claspProgress.style.display = 'none';
+                ui.claspProgressBar.style.width = '100%';
+                setTimeout(() => onWishBlowDetected(), 400);
+            }
+            lastTapTime = now;
+        });
+
         // --- 颜色选择器 ---
         document.getElementById('picker-bottom').addEventListener('input', (e) => CAKE_THEME.bottom = e.target.value);
         document.getElementById('picker-top').addEventListener('input', (e) => CAKE_THEME.top = e.target.value);
