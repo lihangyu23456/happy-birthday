@@ -85,8 +85,9 @@
         #gift-reveal-area { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 28; text-align: center; pointer-events: auto; opacity: 0; transition: opacity 0.5s; }
         #gift-reveal-area.active { opacity: 1; }
         #gift-reveal-area #gift-name-text { font-size: 1.5rem; font-weight: bold; background: linear-gradient(135deg, #ff9a9e, #FFD700); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 1rem; }
-        #gift-reveal-area #gift-photo-placeholder { width: 380px; height: 285px; background: rgba(0,0,0,0.6); border: 2px dashed rgba(255,215,0,0.4); border-radius: 1rem; display: flex; justify-content: center; align-items: center; overflow: hidden; margin: 0 auto 1rem; }
-        #gift-reveal-area #gift-photo-placeholder img, #gift-reveal-area #gift-photo-placeholder video { width: 100%; height: 100%; object-fit: cover; border-radius: 0.8rem; }
+        #gift-reveal-area #gift-photo-placeholder { width: 340px; max-height: 60vh; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,215,0,0.25); border-radius: 1rem; display: flex; justify-content: center; align-items: center; overflow: hidden; margin: 0 auto 1rem; box-shadow: 0 0 40px rgba(255,215,0,0.12); }
+        #gift-reveal-area #gift-photo-placeholder img { width: 100%; height: 100%; object-fit: cover; border-radius: 0.8rem; }
+        #gift-reveal-area #gift-photo-placeholder video { width: 100%; height: auto; max-height: 60vh; display: block; border-radius: 0.8rem; }
         #gift-reveal-area .placeholder-text { color: rgba(255,255,255,0.4); font-size: 0.9rem; text-align: center; }
         #gift-reveal-area #continue-wish-btn { padding: 12px 36px; border-radius: 50px; border: none; background: linear-gradient(135deg, #ff9a9e, #a18cd1); color: white; font-size: 1.1rem; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(255,105,180,0.4); transition: transform 0.3s; }
         #gift-reveal-area #continue-wish-btn.hidden { display: none !important; }
@@ -119,7 +120,7 @@
             #status-text { font-size: 0.875rem; }
             .scrollable-text { max-height: 280px; }
             #wish-btn { font-size: 2rem; padding: 20px 60px; }
-            #gift-reveal-area #gift-photo-placeholder { width: 560px; height: 420px; }
+            #gift-reveal-area #gift-photo-placeholder { width: 460px; }
             #gift-open-btn { font-size: 1.8rem; padding: 20px 48px; }
             #gift-hint-text { font-size: 1.7rem; }
         }
@@ -289,13 +290,13 @@
 
         // --- 礼物数据 ---
         const ALL_GIFTS = [
-            { id: 'airpods', name: '苹果耳机', hint: '自己如果买来觉得不值得的买来才会是更好的礼物啊哈哈哈哈哈并且每天一定能用到！', mediaType: 'image' },
-            { id: 'crocs', name: 'crocs洞洞鞋', hint: '上海之行你曾错过他', mediaType: 'image' },
-            { id: 'mask', name: '焦下防晒面罩', hint: '嘿嘿 我想的是去三下乡了肯定能用上', mediaType: 'image' },
-            { id: 'oil', name: '卡诗护发精油', hint: '乖乖曾说自己现在用不上 我几次说乖乖自己怎么不用这个呢', mediaType: 'image' },
-            { id: 'letter', name: '一封信', hint: '这可是我每天都有在做的事情', mediaType: 'image' }
+            { id: 'airpods', name: '苹果耳机', hint: '自己如果买来觉得不值得的买来才会是更好的礼物啊哈哈哈哈哈并且每天一定能用到！', mediaType: 'video' },
+            { id: 'crocs', name: 'crocs洞洞鞋', hint: '上海之行你曾错过他', mediaType: 'video' },
+            { id: 'mask', name: '焦下防晒面罩', hint: '嘿嘿 我想的是去三下乡了肯定能用上', mediaType: 'video' },
+            { id: 'oil', name: '卡诗护发精油', hint: '乖乖曾说自己现在用不上 我几次说乖乖自己怎么不用这个呢', mediaType: 'video' },
+            { id: 'letter', name: '一封信', hint: '这可是我每天都有在做的事情', mediaType: 'video' }
         ];
-        const FINAL_GIFT = { id: 'photos', name: '照片墙', hint: '我和乖乖的点点滴滴', mediaType: 'image' };
+        const FINAL_GIFT = { id: 'photos', name: '照片墙', hint: '我和乖乖的点点滴滴', mediaType: 'video' };
 
         let wishGifts = [];         // 随机排列的礼物列表（不含照片墙）
         let currentGiftIndex = 0;   // 当前许愿到了第几个礼物
@@ -874,10 +875,20 @@
             setTimeout(() => ui.giftRevealArea.classList.add('active'), 50);
             const placeholder = ui.giftPhotoPlaceholder;
             placeholder.innerHTML = '';
-            const pSpan = document.createElement('span');
-            pSpan.className = 'placeholder-text';
-            pSpan.innerHTML = `📷 ${currentGift.name}<br><small>替换此处嵌入照片或视频</small>`;
-            placeholder.appendChild(pSpan);
+            if (currentGift.mediaType === 'video') {
+                const video = document.createElement('video');
+                video.src = `src/videos/${currentGift.id}.mp4`;
+                video.autoplay = true;
+                video.muted = true;
+                video.loop = true;
+                video.playsInline = true;
+                placeholder.appendChild(video);
+            } else {
+                const pSpan = document.createElement('span');
+                pSpan.className = 'placeholder-text';
+                pSpan.innerHTML = `📷 ${currentGift.name}`;
+                placeholder.appendChild(pSpan);
+            }
             if (isFinalRound) {
                 ui.continueWishBtn.classList.remove('hidden');
                 ui.continueWishBtn.innerText = '✨ 进入照片回忆';
