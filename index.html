@@ -861,31 +861,39 @@
         function openGift() {
             ui.giftOpenBtn.classList.add('hidden');
             ui.giftHintText.classList.remove('active');
-            // 礼物盒打散 → 粒子组成边框
             giftBoxVisible = false;
+            // 在用户手势内创建视频，确保自动播放不被拦截
+            showGiftVideo();
             scatterThenTransition('frame', 800, () => {
                 frameVisible = true;
                 showGiftReveal();
             });
         }
 
-        function showGiftReveal() {
-            ui.giftNameText.innerText = currentGift.name;
-            ui.giftRevealArea.classList.remove('hidden');
-            setTimeout(() => ui.giftRevealArea.classList.add('active'), 50);
+        function showGiftVideo() {
             const placeholder = ui.giftPhotoPlaceholder;
             placeholder.innerHTML = '';
             if (currentGift.mediaType === 'video') {
                 const video = document.createElement('video');
                 video.src = `src/videos/${currentGift.id}.mp4`;
-                video.muted = true;
+                video.muted = true;          // 静音启动（移动端autoplay要求）
                 video.loop = true;
+                video.controls = true;       // 暂停/继续/进度条/音量
                 video.setAttribute('playsinline', '');
                 video.setAttribute('webkit-playsinline', '');
                 video.setAttribute('autoplay', '');
                 placeholder.appendChild(video);
                 video.play().catch(function(){});
-            } else {
+            }
+        }
+
+        function showGiftReveal() {
+            ui.giftNameText.innerText = currentGift.name;
+            ui.giftRevealArea.classList.remove('hidden');
+            setTimeout(() => ui.giftRevealArea.classList.add('active'), 50);
+            if (currentGift.mediaType !== 'video') {
+                const placeholder = ui.giftPhotoPlaceholder;
+                placeholder.innerHTML = '';
                 const pSpan = document.createElement('span');
                 pSpan.className = 'placeholder-text';
                 pSpan.innerHTML = `📷 ${currentGift.name}`;
