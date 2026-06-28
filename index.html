@@ -862,7 +862,10 @@
             ui.giftOpenBtn.classList.add('hidden');
             ui.giftHintText.classList.remove('active');
             giftBoxVisible = false;
-            // 在用户手势内创建视频，确保自动播放不被拦截
+            // 先让容器可见（opacity:0），否则浏览器不会加载视频
+            ui.giftNameText.innerText = currentGift.name;
+            ui.giftRevealArea.classList.remove('hidden');
+            // 在用户手势内创建视频
             showGiftVideo();
             scatterThenTransition('frame', 800, () => {
                 frameVisible = true;
@@ -888,8 +891,6 @@
         }
 
         function showGiftReveal() {
-            ui.giftNameText.innerText = currentGift.name;
-            ui.giftRevealArea.classList.remove('hidden');
             setTimeout(() => ui.giftRevealArea.classList.add('active'), 50);
             if (currentGift.mediaType !== 'video') {
                 const placeholder = ui.giftPhotoPlaceholder;
