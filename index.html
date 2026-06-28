@@ -852,6 +852,14 @@
             ui.giftHintText.innerText = currentGift.hint;
             ui.giftHintText.classList.add('active');
             ui.giftOpenBtn.classList.remove('hidden');
+            // 预加载当前礼物视频
+            if (currentGift.mediaType === 'video') {
+                const link = document.createElement('link');
+                link.rel = 'preload';
+                link.as = 'video';
+                link.href = `src/videos/${currentGift.id}.mp4`;
+                document.head.appendChild(link);
+            }
             ui.giftOpenBtn.onclick = (e) => {
                 e.stopPropagation();
                 openGift();
@@ -877,16 +885,25 @@
             const placeholder = ui.giftPhotoPlaceholder;
             placeholder.innerHTML = '';
             if (currentGift.mediaType === 'video') {
+                const loading = document.createElement('div');
+                loading.className = 'placeholder-text';
+                loading.innerHTML = '⏳ 加载中...';
+                placeholder.appendChild(loading);
                 const video = document.createElement('video');
                 video.src = `src/videos/${currentGift.id}.mp4`;
-                video.muted = true;          // 静音启动（移动端autoplay要求）
+                video.muted = true;
                 video.loop = true;
-                video.controls = true;       // 暂停/继续/进度条/音量
+                video.controls = true;
+                video.style.display = 'none';
                 video.setAttribute('playsinline', '');
                 video.setAttribute('webkit-playsinline', '');
                 video.setAttribute('autoplay', '');
+                video.addEventListener('canplay', function() {
+                    loading.remove();
+                    video.style.display = '';
+                    video.play().catch(function(){});
+                });
                 placeholder.appendChild(video);
-                video.play().catch(function(){});
             }
         }
 
