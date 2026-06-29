@@ -1219,6 +1219,10 @@
             photoWallActive = true;
             photoWallExiting = false;
             photoWallIsHeart = false;
+            // 停掉当前视频，清理 preload 链接，释放带宽
+            const ph = ui.giftPhotoPlaceholder;
+            ph.innerHTML = '<span class="placeholder-text">📷 加载照片墙...</span>';
+            document.querySelectorAll('link[rel="preload"][as="video"]').forEach(el => el.remove());
             ui.wishArea.classList.add('hidden');
             ui.wishArea.classList.remove('active');
             ui.giftRevealArea.classList.add('hidden');
